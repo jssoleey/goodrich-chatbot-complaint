@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 # ----------------- CHATBOT TYPE -------------------
 CHATBOT_TYPE = "complaint"
+
 # ----------------- 마크다운 자동 정리 함수 -------------------
 def format_markdown(text: str) -> str:
     lines = text.strip().splitlines()
@@ -160,6 +161,29 @@ st.markdown(
         margin-top: -5px;
         margin-bottom: -5px;
     }
+    /* 사이드바 배경색 변경 */
+    section[data-testid="stSidebar"] {
+        background-color: #dfe5ed;  /* 원하는 색상 코드 */
+    }
+    /* input box 색상 */
+    input[placeholder="이름(홍길동)"] {
+        background-color: #e4e9f0 !important;
+        color: black !important;
+    }
+    input[placeholder="휴대폰 끝번호 네 자리(0000)"] {
+        background-color: #e4e9f0 !important;
+        color: black !important;
+    }
+    input[placeholder="예: 홍길동"] {
+        background-color: #e4e9f0 !important;
+        color: black !important;
+    }
+    /* 첫 번째 textarea만 스타일 적용 */
+    textarea:nth-of-type(1) {
+        background-color: #e4e9f0 !important;
+        color: #333333;
+        border-radius: 8px;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -309,13 +333,14 @@ if st.session_state.page == "input":
         unsafe_allow_html=True
     )
     
-    # 새로운 고객 정보 입력하기 버튼       
+    # 새로운 민원 상황 입력하기 버튼        
     if st.sidebar.button("🆕 새로운 민원 상황 입력하기", use_container_width=True):
         st.session_state.page = "input"
         st.session_state.message_list = []
         st.session_state.script_context = ""
         st.session_state.kakao_text = ""
-        st.session_state['current_file'] = ""  # 👉 덮어쓰기 방지
+        st.session_state['current_file'] = ""
+        st.session_state['customer_name'] = ""
         st.experimental_rerun()    
 
     # 최하단 로그아웃 버튼
@@ -363,6 +388,10 @@ if st.session_state.page == "input":
     with col2:
         if st.button("🚀 민원 응대 스크립트 생성하기", use_container_width=True):
             if name and situation:
+                # 👉 세션 초기화 추가
+                st.session_state.kakao_text = ""
+                st.session_state['current_file'] = ""
+                
                 # 1️⃣ 민원인 이름 세션에 저장
                 st.session_state['customer_name'] = name
 
@@ -473,14 +502,15 @@ elif st.session_state.page == "chatbot":
         unsafe_allow_html=True
     )
     
-    # 새로운 민원 정보보 입력하기 버튼       
+    # 새로운 민원 상황 입력하기 버튼              
     if st.sidebar.button("🆕 새로운 민원 상황 입력하기", use_container_width=True):
         st.session_state.page = "input"
         st.session_state.message_list = []
         st.session_state.script_context = ""
         st.session_state.kakao_text = ""
-        st.session_state['current_file'] = ""  # 👉 덮어쓰기 방지
-        st.experimental_rerun()    
+        st.session_state['current_file'] = ""
+        st.session_state['customer_name'] = ""
+        st.experimental_rerun()  
 
     # 최하단 로그아웃 버튼
     if st.sidebar.button("로그아웃", use_container_width=True):
@@ -518,15 +548,18 @@ elif st.session_state.page == "chatbot":
     # 👉 버튼 영역: 두 개의 버튼을 나란히 배치
     col1, col2 = st.columns([1, 1])
     
-    with col1:
+    with col1:                
         if st.button("💬 카카오톡 발송용 문자 생성하기", use_container_width=True):
-            with st.spinner("카카오톡 문자를 생성 중입니다..."):
-                kakao_message = get_kakao_response(
-                    script_context = st.session_state['script_context'],
-                    message_list = st.session_state['message_list']
-                )
-                st.session_state['kakao_text'] = "".join(kakao_message)
-                                
+            if not st.session_state.get('script_context'):
+                st.warning("⚠️ 상담 스크립트가 없습니다. 먼저 스크립트를 생성해 주세요.")
+            else:
+                with st.spinner("카카오톡 문자를 생성 중입니다..."):
+                    kakao_message = get_kakao_response(
+                        script_context = st.session_state['script_context'],
+                        message_list = st.session_state['message_list']
+                    )
+                    st.session_state['kakao_text'] = "".join(kakao_message)
+                            
     with col2:
         if st.button("💾 대화 저장하기", use_container_width=True):
             user_path = f"/data/history/{CHATBOT_TYPE}/{st.session_state['user_folder']}"
