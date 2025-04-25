@@ -10,7 +10,7 @@ import os
 from dotenv import load_dotenv
 
 # ======================== 설정 ========================
-load_dotenv(dotenv_path=".envfile", override=True)
+#load_dotenv(dotenv_path=".envfile", override=True)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
@@ -95,7 +95,10 @@ SYSTEM_PROMPT_CHATBOT = (
 # ======================== 모델 호출 ========================
 @lru_cache(maxsize=1)
 def get_llm(model='gpt-4.1-mini'):
-    return ChatOpenAI(model=model)
+    return ChatOpenAI(
+        model=model,
+        openai_api_key=os.getenv("OPENAI_API_KEY")
+    )
 
 # ======================== 세션 관리 ========================
 def get_session_history(session_id: str) -> BaseChatMessageHistory:
