@@ -16,4 +16,4 @@ ENV PYTHONUNBUFFERED=1
 ENV STREAMLIT_PORT=8000
 
 # 6. Streamlit 실행 명령
-CMD ["streamlit", "run", "chatbot_comp.py", "--server.port=8000", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "chatbot_comp.py", "--server.port=$PORT", "--server.address=0.0.0.0"]
