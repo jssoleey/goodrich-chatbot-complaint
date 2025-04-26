@@ -4,14 +4,13 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_community.chat_models import ChatOpenAI
-from langchain_openai import ChatOpenAI
 from functools import lru_cache
 import streamlit as st
 import os
 from dotenv import load_dotenv
 
 # ======================== 설정 ========================
-#load_dotenv(dotenv_path=".envfile", override=True)
+load_dotenv(dotenv_path=".envfile", override=True)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
@@ -20,11 +19,6 @@ store = {}
 
 # ======================== 전역 프롬프트 ========================
 SYSTEM_PROMPT_SCRIPT = (
-    "당신은 보험 민원 대응을 전문으로 하는 AI 상담 지원 도우미입니다.\n"
-    "상담원이 입력한 민원 상황과 고객 감정 상태를 바탕으로, 고객의 불만을 효과적으로 완화하고 신뢰를 줄 수 있는 "
-    "**맞춤형 응대 스크립트**와 실무에 도움이 되는 **상담 TIP**을 함께 제공하세요.\n"
-    "응대 스크립트와 상담TIP 사이 구분선을 추가해서 내용을 구분해주세요.\n\n"
-
     "[응대 스크립트 작성 지침]\n"
     "1. 고객의 불만 사항에 대해 **구체적이고 진정성 있는 사과**를 하세요.\n"
     "2. 고객 감정 상태(1~5단계)에 따라 **공감과 진정 멘트**를 상황에 맞게 여러 번 배치하세요.\n"
@@ -49,11 +43,6 @@ SYSTEM_PROMPT_SCRIPT = (
     "▶️ (구체적인 팁 1)\n"
     "▶️ (구체적인 팁 2)\n"
     "▶️ (필요 시 팁 3)\n\n"
-
-    "[입력 예시]\n"
-    "- 민원인 이름: 김철수\n"
-    "- 민원 내용: 보험금 지급 지연, 3회 문의, 담당자 연결 요청\n"
-    "- 고객 감정 상태: 4 (화남)\n\n"
 )
 
 SYSTEM_PROMPT_CHATBOT = (
@@ -96,10 +85,7 @@ SYSTEM_PROMPT_CHATBOT = (
 # ======================== 모델 호출 ========================
 @lru_cache(maxsize=1)
 def get_llm(model='gpt-4.1-mini'):
-    return ChatOpenAI(
-        model=model,
-        openai_api_key=os.getenv("OPENAI_API_KEY")
-    )
+    return ChatOpenAI(model=model)
 
 # ======================== 세션 관리 ========================
 def get_session_history(session_id: str) -> BaseChatMessageHistory:
@@ -108,15 +94,7 @@ def get_session_history(session_id: str) -> BaseChatMessageHistory:
     return store[session_id]
 
 # ======================== 스크립트 생성 ========================
-def get_script_chain():
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", SYSTEM_PROMPT_SCRIPT),
-        MessagesPlaceholder("chat_history"),
-        ("human", "{complaint_info}")
-    ])
-    return prompt | get_llm() | StrOutputParser()
-
-def get_script_response(name, situation, emotion_level, session_id="complaint_session"):
+def get_script_response(name, situation, emotion_level):
     try:
         # 1️⃣ 고객 감정 상태 설명 매핑
         emotion_labels = {
@@ -135,9 +113,41 @@ def get_script_response(name, situation, emotion_level, session_id="complaint_se
             f"- 고객 감정 상태: {emotion_desc}"
         )
 
+        # ⭐ 상담원 이름 불러오기
+        consultant_name = st.session_state.get('user_name', '상담원')
+
+        # ⭐ dynamic_prompt 생성
+        dynamic_prompt = f"""
+        당신은 보험 민원 대응을 전문으로 하는 AI 상담 지원 도우미입니다.
+        상담원이 입력한 민원 상황과 고객 감정 상태를 바탕으로, 고객의 불만을 효과적으로 완화하고 신뢰를 줄 수 있는 **맞춤형 응대 스크립트**와 실무에 도움이 되는 **상담 TIP**을 함께 제공하세요.
+        응대 스크립트와 상담TIP 사이 구분선을 추가해서 내용을 구분해주세요.
+        고객 이름과 상담원 이름을 혼동하지 말고, 반드시 각 정보에 맞게 사용하세요.
+
+        ⚠️ 절대 지침
+        - 상담원 이름은 반드시 아래 [상담원 정보]의 이름만 사용하세요.
+        - 상담원 이름을 임의로 생성하거나 변경하지 마세요.
+        - 고객 이름은 반드시 [고객 정보]의 이름만 사용하세요.
+        - 다른 이름, 가상의 이름을 절대 생성하지 마세요.
+
+        [상담원 정보]
+        - 상담원 이름: {consultant_name}
+
+        [고객 정보]
+        {complaint_info}
+
+        - 스크립트의 시작 부분에서는 상담원이 본인의 이름을 말하며 정중히 인사하도록 작성하세요.
+        - 예시: "안녕하세요, 저는 굿리치 상담사 **{consultant_name}**입니다."
+        
+        {SYSTEM_PROMPT_SCRIPT}
+        """
+
         # 3️⃣ 체인 호출
         chain = RunnableWithMessageHistory(
-            get_script_chain(),
+            ChatPromptTemplate.from_messages([
+                ("system", dynamic_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{complaint_info}")
+            ]) | get_llm() | StrOutputParser(),
             get_session_history,
             input_messages_key="complaint_info",
             history_messages_key="chat_history",
@@ -145,9 +155,10 @@ def get_script_response(name, situation, emotion_level, session_id="complaint_se
 
         result = chain.invoke(
             {"complaint_info": complaint_info},
-            config={"configurable": {"session_id": session_id}}
+            config={"configurable": {"session_id": st.session_state.session_id}}
         )
         return iter([result])
+    
 
     except Exception as e:
         st.error("🔥 민원 응대 스크립트 생성 중 오류가 발생했습니다. 콘솔 로그를 확인해 주세요.")
@@ -164,7 +175,7 @@ def get_chatbot_chain():
     return prompt | get_llm() | StrOutputParser()
 
 
-def get_chatbot_response(user_message, script_context="", session_id="chatbot_session"):
+def get_chatbot_response(user_message, script_context=""):
     try:
         full_input = (
             "[주의] 아래 상담 스크립트 내용을 반드시 참고하여 상담원의 요청에 답변하세요.\n\n"
@@ -183,7 +194,8 @@ def get_chatbot_response(user_message, script_context="", session_id="chatbot_se
 
         result = chain.invoke(
             {"input": full_input},
-            config={"configurable": {"session_id": session_id}}
+            config={"configurable": {"session_id": st.session_state.session_id}}
+
         )
         return iter([result])
 
@@ -206,79 +218,44 @@ def generate_conversation_summary(message_list):
                     summary_points.append(f"- 제안 멘트: {line[2:]}")
     return "\n".join(summary_points)
     
-def get_kakao_response(script_context, message_list, session_id="kakao_session"):
+def get_kakao_response(script_context, message_list):
     try:
         conversation_summary = generate_conversation_summary(message_list)
 
         dynamic_prompt = f"""
-            [상담 요약]
-            {script_context}
+        [민원 상담 요약]
+        {script_context}
 
-            [추가 대화 요약]
-            {conversation_summary}
+        [추가 대화 요약]
+        {conversation_summary}
 
-            ⚠️ 반드시 위 상담 요약과 추가 대화 요약 내용을 반영하여 고객 발송용 카카오톡 메시지를 작성하세요.
-            
-            - 당신은 보험 상담 후 고객에게 발송할 카카오톡 메시지를 작성하는 상담사입니다.
-            - 상담 내용을 바탕으로 고객 성향에 맞게 다음 [출력 형식]과 [작성 지침]에 따라 총 **3가지 유형**의 메시지를 작성하세요.
+        ⚠️ 반드시 위 **민원 상담 요약**과 **추가 대화 요약**을 반영하여, 고객에게 발송할 카카오톡 메시지를 작성하세요.
 
-            "[출력 형식]\n"
-            "각 메시지는 아래 제목과 형식을 반드시 지켜 작성하세요.\n\n"
+        - 당신은 민원 처리 상담 후, 고객에게 상황을 정리하고 안내 메시지를 보내는 보험사 상담사입니다.
+        - 상담 내용을 기반으로 고객의 불만을 완화하고 신뢰를 회복할 수 있도록 다음 [출력 형식]과 [작성 지침]에 따라 총 **3가지 유형**의 메시지를 작성하세요.
 
-            "### 1️⃣ 전문성 강조형\n"
-            "(보험 전문가로서 핵심 보장 내용과 필요한 이유를 논리적으로 전달하는 메시지)\n\n"
+        [출력 형식]
+        각 메시지는 아래 제목과 설명을 참고하여 작성하세요.
 
-            "### 2️⃣ 감성형\n"
-            "(따뜻하고 배려 있는 말투로, 고객의 마음을 편안하게 해주는 메시지)\n\n"
+        ### 1️⃣ 공감+감사형
+        (고객의 불편에 깊이 공감하고, 기다려준 것에 대한 감사의 마음을 전하는 메시지)
 
-            "### 3️⃣ 실제 사례형\n"
-            "(실제 보험금 지급 사례나 주변 사례를 언급하며 필요성을 자연스럽게 강조하는 메시지)\n\n"
-            
-            [작성 지침]            
-            1. 각 메시지는 **15줄 내외**로 작성하세요.
-            2. 문장은 반드시 **문장 단위로 줄바꿈**하여 가독성을 높이세요.
-            2-1. 한 문장이 너무 길어져도 **적절하게 줄바꿈**하여 가독성을 높이세요.
-            2-2. 내용이 바뀌는 문단은 반드시 **두 번 줄바꿈**하여 가독성을 높이세요.
-            3. 고객 이름을 자연스럽게 포함하고, 상황에 맞는 맞춤형 표현을 사용하세요.
-            4. 문장은 정중하면서도 부담 없는 톤으로 작성하세요.
-            5. 상담한 보험의 구체적인 내용(예: 치매보험의 주요 보장, 간병보험의 활용 사례 등)을 간단히 언급하세요.
-            6. 고객이 이해하기 쉽게, 너무 추상적인 표현은 피하고 **실질적인 도움이 되는 설명**을 포함하세요.
-            7. 상담한 보험 종류, 보완이 필요한 내용, 고객이 관심을 보인 내용용 등을 반영하세요.
-            8. 가입을 강요하지 말고, '편하게 문의 주세요'와 같은 표현으로 마무리하세요.
-            9. 이모지는 과하지 않게 사용해주세요.
+        ### 2️⃣ 정중+사과형
+        (격식 있고 공식적인 어조로 사과 및 처리 상황을 명확히 안내하는 메시지)
 
-            "[입력 예시]\n"
-            "- 고객 이름: 박진호\n"
-            "- 상담 요약: 치매보험과 간병보험 설명, 기존 실비보험 보장 부족 보완 제안\n"
-            "- 추가 안내: 카카오톡으로 상담 내용 전달, 문의 시 추가 설명 가능\n\n"
+        ### 3️⃣ 전문 + 실제 사례형
+        (유사 사례를 언급하며 전문적으로 대응하고 있음을 강조, 고객에게 안심을 주는 메시지)
 
-            "[출력 예시 - 일부]\n"
-            "### 2️⃣ 감성형\n"
-            
-            박진호님, 안녕하세요.  
-            오늘 상담 드리면서 진호님께서 나누어주신 이야기 덕분에 많은 생각을 하게 되었습니다.
-
-            배우자 분을 간병하시면서 얼마나 힘든 시간을 보내셨을지, 말씀만으로도 마음이 무거워졌습니다.  
-            그 과정에서 장기 보장의 중요성을 느끼셨다는 말씀에 깊이 공감했습니다.
-
-            가족을 위해 미리 대비하려는 진호님의 마음이 정말 인상적이었고, 저도 꼭 도움이 되고 싶었습니다.
-
-            오늘 안내드린 치매보험과 간병보험은 혹시 모를 상황에서 진호님과 가족분들에게 든든한 버팀목이 되어줄 수 있는 보장입니다.
-
-            특히 장기 간병이나 예상치 못한 진단이 발생했을 때, 경제적인 부담을 덜어드릴 수 있도록 설계된 상품이라  
-            진호님처럼 가족을 먼저 생각하시는 분들께 꼭 필요한 준비라고 생각합니다.
-
-            무엇보다도 진호님께서 부담 없이 시작하실 수 있도록 보장 범위와 보험료를 조율해 안내드렸으니, 너무 걱정하지 않으셔도 됩니다.
-
-            이런 준비는 서두를 필요 없이, 천천히 고민해보시고 결정하셔도 괜찮습니다.
-
-            혹시 다시 한번 설명이 필요하시거나, 더 궁금한 점이 생기신다면 언제든 편하게 연락 주세요.
-
-            진호님께 가장 좋은 선택이 될 수 있도록 언제든 도움드리겠습니다.
-
-            오늘 상담 진심으로 감사드리고, 무더운 날씨에 건강 유의하세요.
-
-            늘 진호님과 가족분들을 응원하겠습니다. 감사합니다. 😊               
+        [작성 지침]            
+        1. 각 메시지는 **15문장 내외**로 작성하세요.
+        2. 문장은 **문장 단위로 줄바꿈**하여 가독성을 높이세요.
+        3. 내용이 전환될 때는 **두 번 줄바꿈**으로 문단을 구분하세요.
+        4. 고객 이름을 자연스럽게 포함하세요.
+        5. 민원 처리 상황, 진행 단계, 추가 문의 가능 여부 등을 반드시 안내하세요.
+        6. 강압적 표현은 절대 사용하지 말고, 항상 **'편하게 문의 주세요'** 등의 표현으로 마무리하세요.
+        7. 이모지는 과하지 않게 사용하고, [공감+감사형]에서만 적절히 활용하세요.
+        8. [전문 + 실제 사례형]에서는 실제 사례처럼 보이도록 자연스럽게 작성하되, 과장되거나 허위로 느껴지지 않게 주의하세요.
+        9. 불안감을 유발하는 표현은 피하고, 신뢰와 안정감을 주는 표현을 사용하세요.
         """
 
         chain = RunnableWithMessageHistory(
@@ -291,10 +268,12 @@ def get_kakao_response(script_context, message_list, session_id="kakao_session")
             input_messages_key="input",
             history_messages_key="chat_history",
         )
-
+        
+        kakao_session_id = f"{st.session_state.session_id}_kakao"
+        
         result = chain.invoke(
             {"input": "카카오톡 메시지를 생성해 주세요."},
-            config={"configurable": {"session_id": session_id}}
+            config={"configurable": {"session_id": kakao_session_id}}
         )
         return iter([result])
 
