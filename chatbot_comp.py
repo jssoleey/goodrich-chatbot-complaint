@@ -652,7 +652,7 @@ elif st.session_state.page == "chatbot":
     else:
         st.error("❌ 메시지 리스트가 손상되었습니다. 다시 불러와 주세요.")
 
-    if user_question := st.chat_input("보험 상담 관련 추가 질문을 입력해 주세요."):
+    if user_question := st.chat_input("민원 상담 관련 질문을 자유롭게 입력해 주세요."):
         st.session_state.message_list.append({"role": "user", "content": user_question})
         display_message("user", user_question, user_avatar)
 
