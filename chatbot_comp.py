@@ -183,7 +183,7 @@ def render_sidebar():
         st.sidebar.title(f"😊 {user_name}님, 반갑습니다!")
         st.sidebar.markdown("오늘도 멋진 상담 화이팅입니다! 💪")
 
-        st.sidebar.markdown("<hr style='margin-top:14px; margin-bottom:28px;'>", unsafe_allow_html=True)
+        st.sidebar.markdown("<hr style='margin-top:20px; margin-bottom:34px;'>", unsafe_allow_html=True)
 
         user_path = f"/data/{CHATBOT_TYPE}/history/{st.session_state['user_folder']}"
         if not os.path.exists(user_path):
@@ -215,7 +215,7 @@ def render_sidebar():
         else:
             st.sidebar.info("저장된 대화가 없습니다.")
 
-        st.sidebar.markdown("<hr style='margin-top:14px; margin-bottom:28px;'>", unsafe_allow_html=True)
+        st.sidebar.markdown("<hr style='margin-top:24px; margin-bottom:38px;'>", unsafe_allow_html=True)
 
         if st.sidebar.button("📝 민원응대 체크리스트 보기", use_container_width=True):
             st.session_state.sidebar_mode = "checklist"
