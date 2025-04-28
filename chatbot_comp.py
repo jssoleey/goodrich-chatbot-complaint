@@ -185,7 +185,7 @@ def render_sidebar():
 
         st.sidebar.markdown("<hr style='margin-top:14px; margin-bottom:28px;'>", unsafe_allow_html=True)
 
-        user_path = f"/data/history/{CHATBOT_TYPE}/{st.session_state['user_folder']}"
+        user_path = f"/data/{CHATBOT_TYPE}/history/{st.session_state['user_folder']}"
         if not os.path.exists(user_path):
             os.makedirs(user_path)
 
@@ -550,7 +550,7 @@ elif st.session_state.page == "chatbot":
                             
     with col2:
         if st.button("💾 대화 저장하기", use_container_width=True):
-            user_path = f"/data/history/{CHATBOT_TYPE}/{st.session_state['user_folder']}"
+            user_path = f"/data/{CHATBOT_TYPE}/history/{st.session_state['user_folder']}"
             if not os.path.exists(user_path):
                 os.makedirs(user_path)
             if st.session_state.message_list:
