@@ -455,6 +455,7 @@ if st.session_state.page == "input":
         5: "😡 매우 화남"
     }
     st.markdown(f"**현재 선택된 감정 상태:** {emotion_labels[emotion]}")
+    st.caption("")
 
     col1, col2, col3 = st.columns([1, 2, 1])   # 비율을 조정해서 가운데로
 
