@@ -244,6 +244,8 @@ def load_chat_history(user_path, selected_chat):
             st.session_state['script_context'] = loaded_data.get("script_context", "")
             st.session_state.message_list = loaded_data.get("message_list", [])
             st.session_state['customer_name'] = loaded_data.get("customer_name", selected_chat.split('_')[0])
+            st.session_state['customer_emotion_label'] = loaded_data.get("customer_emotion_label", "")
+            st.session_state['customer_situation'] = loaded_data.get("customer_situation", "")
         else:
             st.error("❌ 불러온 파일 형식이 잘못되었습니다.")
             st.stop()
@@ -455,7 +457,6 @@ if st.session_state.page == "input":
         5: "😡 매우 화남"
     }
     st.markdown(f"**현재 선택된 감정 상태:** {emotion_labels[emotion]}")
-    st.caption("")
 
     col1, col2, col3 = st.columns([1, 2, 1])   # 비율을 조정해서 가운데로
 
@@ -576,6 +577,8 @@ elif st.session_state.page == "chatbot":
                 # 3️⃣ 데이터 저장
                 data_to_save = {
                     "customer_name": customer_name,
+                    "customer_emotion_label": st.session_state.get('customer_emotion_label', ''),
+                    "customer_situation": st.session_state.get('customer_situation', ''),
                     "script_context": st.session_state.get('script_context', ''),
                     "message_list": st.session_state.message_list
                 }
