@@ -451,7 +451,7 @@ if st.session_state.page == "input":
     # 3️⃣ 추가 참고 정보 입력 (선택)
     extra_info = st.text_area(
         label="추가 참고 정보 (선택 입력)",
-        placeholder="특정 규정, 법적 지침, 회사 방침 등 답변의 전문성을 높일 수 있는 정보를 입력해 주세요. (예: 계약 청약철회 시 30일 이내 청약철회권 고지 의무 등)",
+        placeholder="답변내용 작성시 꼭 넣어야 하는 내용이 있으면 입력해 주세요. ex)필요서류, 질병코드번호, 보험사대표번호, 청약철회기간, 확인이 되지 않지만 다시한번 확인해보겠다. 등",
         value=st.session_state.get('extra_info_input', '')
     )
 
