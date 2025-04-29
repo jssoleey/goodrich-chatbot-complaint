@@ -97,6 +97,56 @@ def get_session_history(session_id: str) -> BaseChatMessageHistory:
         store[session_id] = ChatMessageHistory()
     return store[session_id]
 
+# ======================== 랜덤 고객 정보 생성 ========================
+from langchain_community.chat_models import ChatOpenAI
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+
+@lru_cache(maxsize=1)
+def get_llm(model='gpt-4.1-mini'):
+    return ChatOpenAI(model=model)
+
+def get_random_customer_info():
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", """
+        당신은 보험과 관련된 가상의 민원 상황을 생성하는 AI 어시스턴트입니다.
+        
+        [출력 지침]
+        민원 상담 상황에 맞춰 다음 형식으로 랜덤 데이터를 생성하세요:
+        - 이름: 자연스러운 한글 이름을 생성하세요.
+        - 민원 내용: 태아보험, 어린이보험, 건강보험과 관련하여 현실적인 민원 상황을 구체적으로 작성하세요.
+        - 고객 감정 상태: 1~5 중 하나의 숫자를 출력하세요. (1=평온, 5=매우 화남)
+        - 추가 참고 정보: 민원 상황과 관련해 답변에 활용할 수 있는 규정, 법 조항, 회사 방침 등 전문적인 정보를 구체적으로 작성하세요.
+
+        반드시 다음 형식으로 출력하세요:
+
+        이름: (이름)
+        민원 내용: (민원 내용)
+        고객 감정 상태: (1~5 숫자만)
+        추가 참고 정보: (추가 참고 정보)
+        """),
+        ("human", "랜덤 고객 정보를 생성해 주세요.")
+    ])
+
+    chain = prompt_template | get_llm() | StrOutputParser()
+
+    result = chain.invoke({})
+    
+    # 결과 파싱
+    lines = result.splitlines()
+    info = {}
+    for line in lines:
+        if line.startswith("이름:"):
+            info['name'] = line.replace("이름:", "").strip()
+        elif line.startswith("민원 내용:"):
+            info['situation'] = line.replace("민원 내용:", "").strip()
+        elif line.startswith("고객 감정 상태:"):
+            info['emotion'] = int(line.replace("고객 감정 상태:", "").strip())
+        elif line.startswith("추가 참고 정보:"):
+            info['extra_info'] = line.replace("추가 참고 정보:", "").strip()
+
+    return info
+
 # ======================== 스크립트 생성 ========================
 def get_script_response(name, situation, emotion_level):
     try:
@@ -109,6 +159,7 @@ def get_script_response(name, situation, emotion_level):
             5: "매우 화남"
         }
         emotion_desc = f"{emotion_level} ({emotion_labels.get(emotion_level, '불만')})"
+        extra_info = st.session_state.get('extra_info', '')
 
         # 입력 정보를 LLM에게 전달할 포맷으로 구성
         complaint_info = (
@@ -116,6 +167,9 @@ def get_script_response(name, situation, emotion_level):
             f"- 민원 내용: {situation}\n"
             f"- 고객 감정 상태: {emotion_desc}"
         )
+        # 추가 정보가 있으면 추가
+        if extra_info:
+            complaint_info += f"- 추가 참고 정보: {extra_info}\n"
 
         # ⭐ 상담원 이름 불러오기
         consultant_name = st.session_state.get('user_name', '상담원')
@@ -132,6 +186,9 @@ def get_script_response(name, situation, emotion_level):
         - 상담원 이름을 임의로 생성하거나 변경하지 마세요.
         - 고객 이름은 반드시 [고객 정보]의 이름만 사용하세요.
         - 다른 이름, 가상의 이름을 절대 생성하지 마세요.
+        - 추가 참고 정보가 제공된 경우, 전체 스크립트 흐름을 이 정보 중심으로 끌고 가지 마세요.
+        - 필요할 때 자연스럽게 언급하거나 설명을 보완할 때 사용하세요.
+        - 고객 설명 파트나 처리절차 안내 파트에서 활용하면 좋습니다.
 
         [상담원 정보]
         - 상담원 이름: {consultant_name}
