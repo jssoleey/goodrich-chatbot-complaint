@@ -1,5 +1,5 @@
 import streamlit as st
-from llm_comp import get_chatbot_response, get_script_response, get_kakao_response
+from llm_comp import get_chatbot_response, get_script_response, get_kakao_response, get_random_customer_info
 import re
 import os, json
 from datetime import datetime, timedelta, timezone
@@ -246,6 +246,7 @@ def load_chat_history(user_path, selected_chat):
             st.session_state['customer_name'] = loaded_data.get("customer_name", selected_chat.split('_')[0])
             st.session_state['customer_emotion_label'] = loaded_data.get("customer_emotion_label", "")
             st.session_state['customer_situation'] = loaded_data.get("customer_situation", "")
+            st.session_state['extra_info'] = loaded_data.get("extra_info", "")
         else:
             st.error("❌ 불러온 파일 형식이 잘못되었습니다.")
             st.stop()
@@ -341,17 +342,24 @@ def render_customer_info():
     customer_name = st.session_state.get('customer_name', '고객명미입력')
     emotion = st.session_state.get('customer_emotion_label', '')
     situation = st.session_state.get('customer_situation', '')
+    extra_info = st.session_state.get('extra_info', '')
 
-    st.markdown("""
+    info_html = f"""
         <div style="background-color:#f0f8ff; padding:15px; border:1px solid #ddd; border-radius:8px; margin-bottom:20px;">
             <h5>📄 고객 정보 요약</h5>
             <ul>
-                <li><b>이름:</b> {name}</li>
+                <li><b>이름:</b> {customer_name}</li>
                 <li><b>감정 상태:</b> {emotion}</li>
                 <li><b>민원 내용:</b> {situation}</li>
-            </ul>
-        </div>
-    """.format(name=customer_name, emotion=emotion, situation=situation), unsafe_allow_html=True)
+    """
+
+    # 추가 참고 정보가 있을 때만 출력
+    if extra_info:
+        info_html += f"<li><b>추가 참고 정보:</b> {extra_info}</li>"
+
+    info_html += "</ul></div>"
+
+    st.markdown(info_html, unsafe_allow_html=True)
 
 # ----------------- 페이지 설정 -------------------
 # 이미지 URL
@@ -404,6 +412,7 @@ initialize_session()
 if st.session_state.page == "login":
     name = st.text_input(label = "ID", placeholder="이름(홍길동)")
     emp_id = st.text_input(label = "Password", placeholder="휴대폰 끝번호 네 자리(0000)")
+    st.caption("")
             
     col1, col2, col3 = st.columns([1, 1, 1])   # 비율을 조정해서 가운데로
 
@@ -430,20 +439,28 @@ if st.session_state.page == "input":
     )
 
     # 1️⃣ 민원인 이름 입력
-    name = st.text_input("민원인 이름", placeholder="예: 홍길동")
+    name = st.text_input("민원인 이름", placeholder="예: 홍길동", value=st.session_state.get('customer_name_input', ''))
 
     # 2️⃣ 민원 내용 입력
     situation = st.text_area(
         label="현재 민원 내용",
-        placeholder="민원인의 구체적인 불만 사항, 요청 내용, 진행 상황, 통화 내용 등을 최대한 상세히 입력해 주세요.\n(예: 민원인이 지난 2주 동안 3회 문의했으며, 매번 답변이 지연됨. 현재 강하게 항의 중이며, 금일 중 처리 요구.)"
+        placeholder="민원인의 구체적인 불만 사항, 요청 내용, 진행 상황, 통화 내용 등을 최대한 상세히 입력해 주세요.\n(예: 민원인이 지난 2주 동안 3회 문의했으며, 매번 답변이 지연됨. 현재 강하게 항의 중이며, 금일 중 처리 요구.)",
+        value=st.session_state.get('customer_situation_input', '')
+    )
+    
+    # 3️⃣ 추가 참고 정보 입력 (선택)
+    extra_info = st.text_area(
+        label="추가 참고 정보 (선택 입력)",
+        placeholder="특정 규정, 법적 지침, 회사 방침 등 답변의 전문성을 높일 수 있는 정보를 입력해 주세요. (예: 계약 청약철회 시 30일 이내 청약철회권 고지 의무 등)",
+        value=st.session_state.get('extra_info_input', '')
     )
 
-    # 3️⃣ 고객 감정 상태 (Slider)
+    # 4️⃣ 고객 감정 상태 (Slider)
     emotion = st.slider(
         label="고객 감정 상태",
         min_value=1,
         max_value=5,
-        value=3,
+        value=st.session_state.get('customer_emotion_input', 3),
         format="%d",
         help="1: 평온 ➜ 5: 매우 화남"
     )
@@ -457,8 +474,20 @@ if st.session_state.page == "input":
         5: "😡 매우 화남"
     }
     st.markdown(f"**현재 선택된 감정 상태:** {emotion_labels[emotion]}")
+    st.caption("")
 
-    col1, col2, col3 = st.columns([1, 2, 1])   # 비율을 조정해서 가운데로
+    col1, col2 = st.columns([1, 1])
+    
+    with col1 :
+        if st.button("🎲 랜덤 고객 정보 생성하기", use_container_width=True):
+            with st.spinner("랜덤 고객 정보를 생성 중입니다..."):
+                random_info = get_random_customer_info()
+                st.session_state['customer_name_input'] = random_info['name']
+                st.session_state['customer_situation_input'] = random_info['situation']
+                st.session_state['customer_emotion_input'] = random_info['emotion']
+                st.session_state['extra_info_input'] = random_info['extra_info']
+                
+            st.experimental_rerun()
 
     with col2:
         if st.button("🚀 민원 응대 스크립트 생성하기", use_container_width=True):
@@ -467,7 +496,7 @@ if st.session_state.page == "input":
                 st.session_state.kakao_text = ""
                 st.session_state['current_file'] = ""
                 
-                # 고객 정보 세션에 저장장
+                # 고객 정보 세션에 저장
                 st.session_state['customer_name'] = name
                 emotion_labels = {
                     1: "😊 평온",
@@ -477,6 +506,7 @@ if st.session_state.page == "input":
                     5: "😡 매우 화남"
                 }
                 st.session_state['customer_emotion_label'] = emotion_labels[emotion]
+                st.session_state['extra_info'] = extra_info
                 st.session_state['customer_situation'] = situation
 
                 with st.spinner("민원 응대 스크립트를 생성 중입니다..."):
@@ -579,6 +609,7 @@ elif st.session_state.page == "chatbot":
                     "customer_name": customer_name,
                     "customer_emotion_label": st.session_state.get('customer_emotion_label', ''),
                     "customer_situation": st.session_state.get('customer_situation', ''),
+                    "extra_info": st.session_state.get('extra_info', ''),
                     "script_context": st.session_state.get('script_context', ''),
                     "message_list": st.session_state.message_list
                 }
