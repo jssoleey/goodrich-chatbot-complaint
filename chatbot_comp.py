@@ -485,15 +485,12 @@ if st.session_state.page == "input":
 
     col1, col2 = st.columns([1, 1])
     
-    with col1 :
-        if st.button("🎲 랜덤 고객 정보 생성하기", use_container_width=True):
-            with st.spinner("랜덤 고객 정보를 생성 중입니다..."):
-                random_info = get_random_customer_info()
-                st.session_state['customer_name_input'] = random_info['name']
-                st.session_state['customer_situation_input'] = random_info['situation']
-                st.session_state['customer_emotion_input'] = random_info['emotion']
-                st.session_state['extra_info_input'] = random_info['extra_info']
-                
+    with col1:
+        if st.button("📝 입력 예시 불러오기", use_container_width=True):
+            example_info = {
+                "situation": "20년1월 전자서명을 통해 계약체결한 고객입니다. 전자서명은 본인명의의 휴대폰으로만 가능하고 계약자 본인 인증을 한후 서명을 진행하게 되는데 이제와서 본인의 서명이 아니라고 주장하는 고객을 설득할수 있는 응대 스크립트 부탁해.",
+            }
+            st.session_state['customer_situation_input'] = example_info['situation']
             st.experimental_rerun()
 
     with col2:
