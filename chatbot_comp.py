@@ -194,14 +194,14 @@ def render_sidebar():
         if history_files:
             search_keyword = st.sidebar.text_input("🔎 고객명으로 검색", placeholder="고객명 입력 후 ENTER", key="search_input")        
             filtered_files = [f for f in history_files if search_keyword.lower() in f.lower()]
-            selected_chat = st.sidebar.selectbox("📂 저장된 대화 기록", filtered_files)
+            selected_chat = st.sidebar.selectbox("📂 저장된 대화 기록", filtered_files, key="chat_file_selector")
 
             col1, col2 = st.sidebar.columns(2)
 
             with col1:
                 if st.button("불러오기", use_container_width=True):
-                    # 👉 기존 불러오기 로직 호출
-                    load_chat_history(user_path, selected_chat)
+                    st.session_state['selected_chat_temp'] = selected_chat
+                    load_chat_history(user_path, st.session_state['selected_chat_temp'])
 
             with col2:
                 if st.button("🗑️ 삭제하기", use_container_width=True):
