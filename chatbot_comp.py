@@ -492,7 +492,7 @@ if st.session_state.page == "input":
                 "extra_info": "전자서명은 본인명의 핸드폰으로만 인증이 가능해."
             }
             st.session_state['customer_situation_input'] = example_info['situation']
-            st.session_state['extra_info'] = example_info['extra_info']
+            st.session_state['extra_info_input'] = example_info['extra_info']
             st.experimental_rerun()
 
     with col2:
