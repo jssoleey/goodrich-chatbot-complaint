@@ -488,9 +488,11 @@ if st.session_state.page == "input":
     with col1:
         if st.button("📝 입력 예시 불러오기", use_container_width=True):
             example_info = {
-                "situation": "20년1월 전자서명을 통해 계약체결한 고객입니다. 전자서명은 본인명의의 휴대폰으로만 가능하고 계약자 본인 인증을 한후 서명을 진행하게 되는데 이제와서 본인의 서명이 아니라고 주장하는 고객을 설득할수 있는 응대 스크립트 부탁해.",
+                "situation": "20년1월 전자서명을 통해 계약체결한 고객이야. 전자서명은 본인명의의 휴대폰으로만 가능하고 계약자 본인 인증을 한후 서명을 진행하게 되는데 이제와서 본인의 서명이 아니라고 주장하는 고객을 설득할수 있는 응대 스크립트 부탁해.",
+                "extra_info": "전자서명은 본인명의 핸드폰으로만 인증이 가능해."
             }
             st.session_state['customer_situation_input'] = example_info['situation']
+            st.session_state['extra_info'] = example_info['extra_info']
             st.experimental_rerun()
 
     with col2:
